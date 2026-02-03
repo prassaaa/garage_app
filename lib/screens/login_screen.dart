@@ -54,47 +54,11 @@ class _LoginScreenState extends State<LoginScreen> {
               child: Column(
                 mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  // Logo
-                  Container(
-                    width: 120,
-                    height: 120,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      gradient: LinearGradient(
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                        colors: [
-                          AppColors.magenta,
-                          AppColors.magenta.withValues(alpha: 0.7),
-                        ],
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: AppColors.magenta.withValues(alpha: 0.3),
-                          blurRadius: 20,
-                          spreadRadius: 5,
-                        ),
-                      ],
-                    ),
-                    child: const Center(
-                      child: Text(
-                        'S758',
-                        style: TextStyle(
-                          fontSize: 28,
-                          fontWeight: FontWeight.bold,
-                          color: AppColors.white,
-                          letterSpacing: 2,
-                        ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 16),
-                  Text(
-                    'GARAGE',
-                    style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                          letterSpacing: 6,
-                          color: AppColors.white,
-                        ),
+                  // Logo image
+                  Image.asset(
+                    'assets/images/logo.png',
+                    width: 240,
+                    fit: BoxFit.contain,
                   ),
                   const SizedBox(height: 48),
 

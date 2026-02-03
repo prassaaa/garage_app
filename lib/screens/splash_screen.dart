@@ -96,46 +96,11 @@ class _SplashScreenState extends State<SplashScreen>
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Container(
-                width: 150,
-                height: 150,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [
-                      AppColors.magenta,
-                      AppColors.magenta.withValues(alpha: 0.7),
-                    ],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: AppColors.magenta.withValues(alpha: 0.3),
-                      blurRadius: 30,
-                      spreadRadius: 10,
-                    ),
-                  ],
-                ),
-                child: const Center(
-                  child: Text(
-                    'S758',
-                    style: TextStyle(
-                      fontSize: 36,
-                      fontWeight: FontWeight.bold,
-                      color: AppColors.white,
-                      letterSpacing: 2,
-                    ),
-                  ),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'GARAGE',
-                style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                      letterSpacing: 8,
-                      color: AppColors.white,
-                    ),
+              // Logo image
+              Image.asset(
+                'assets/images/logo.png',
+                width: 280,
+                fit: BoxFit.contain,
               ),
               const SizedBox(height: 48),
               const SizedBox(
