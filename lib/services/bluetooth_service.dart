@@ -2,7 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:typed_data';
 
-import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:flutter_blue_classic/flutter_blue_classic.dart';
 
 import '../models/device_info.dart';
 
@@ -14,7 +14,7 @@ enum BluetoothConnectionState {
 }
 
 class BluetoothService {
-  final FlutterBluetoothSerial _bluetooth = FlutterBluetoothSerial.instance;
+  final FlutterBlueClassic _bluetooth = FlutterBlueClassic(usesFineLocation: true);
   BluetoothConnection? _connection;
 
   final _connectionStateController =
@@ -31,16 +31,23 @@ class BluetoothService {
   DeviceInfo? _connectedDevice;
   DeviceInfo? get connectedDevice => _connectedDevice;
 
-  Future<bool> get isBluetoothEnabled async =>
-      await _bluetooth.isEnabled ?? false;
+  StreamSubscription<BluetoothAdapterState>? _adapterStateSubscription;
+
+  Future<bool> get isBluetoothEnabled async {
+    return await _bluetooth.isEnabled;
+  }
 
   Future<bool> requestEnable() async {
-    return await _bluetooth.requestEnable() ?? false;
+    _bluetooth.turnOn();
+    // Wait a bit for bluetooth to turn on
+    await Future.delayed(const Duration(seconds: 1));
+    return await _bluetooth.isEnabled;
   }
 
   Future<List<DeviceInfo>> getPairedDevices() async {
-    final devices = await _bluetooth.getBondedDevices();
-    return devices.map((d) => DeviceInfo.fromBluetoothDevice(d)).toList();
+    final devices = await _bluetooth.bondedDevices;
+    if (devices == null) return [];
+    return devices.map((d) => DeviceInfo.fromBlueClassicDevice(d)).toList();
   }
 
   Future<bool> connect(DeviceInfo device) async {
@@ -51,8 +58,13 @@ class BluetoothService {
     _updateState(BluetoothConnectionState.connecting);
 
     try {
-      _connection = await BluetoothConnection.toAddress(device.address)
+      _connection = await _bluetooth.connect(device.address)
           .timeout(const Duration(seconds: 10));
+
+      if (_connection == null) {
+        _updateState(BluetoothConnectionState.error);
+        return false;
+      }
 
       _connectedDevice = device;
       _updateState(BluetoothConnectionState.connected);
@@ -86,14 +98,12 @@ class BluetoothService {
   }
 
   Future<bool> sendCommand(String command) async {
-    if (_connection == null || !_connection!.isConnected) {
+    if (_connection == null) {
       return false;
     }
 
     try {
-      final data = Uint8List.fromList(utf8.encode('$command\n'));
-      _connection!.output.add(data);
-      await _connection!.output.allSent;
+      _connection!.writeString('$command\n');
       return true;
     } catch (e) {
       return false;
@@ -111,6 +121,7 @@ class BluetoothService {
   }
 
   void dispose() {
+    _adapterStateSubscription?.cancel();
     disconnect();
     _connectionStateController.close();
     _dataController.close();

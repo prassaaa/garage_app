@@ -1,4 +1,4 @@
-import 'package:flutter_bluetooth_serial/flutter_bluetooth_serial.dart';
+import 'package:flutter_blue_classic/flutter_blue_classic.dart';
 
 class DeviceInfo {
   final String name;
@@ -11,19 +11,11 @@ class DeviceInfo {
     this.isPaired = false,
   });
 
-  factory DeviceInfo.fromBluetoothDevice(BluetoothDevice device) {
+  factory DeviceInfo.fromBlueClassicDevice(BluetoothDevice device) {
     return DeviceInfo(
       name: device.name ?? 'Unknown Device',
       address: device.address,
-      isPaired: device.isBonded,
-    );
-  }
-
-  BluetoothDevice toBluetoothDevice() {
-    return BluetoothDevice(
-      name: name,
-      address: address,
-      bondState: isPaired ? BluetoothBondState.bonded : BluetoothBondState.none,
+      isPaired: device.bondState == BluetoothBondState.bonded,
     );
   }
 

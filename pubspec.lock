@@ -174,14 +174,14 @@ packages:
     description: flutter
     source: sdk
     version: "0.0.0"
-  flutter_bluetooth_serial:
+  flutter_blue_classic:
     dependency: "direct main"
     description:
-      name: flutter_bluetooth_serial
-      sha256: "85ae82c4099b2b1facdc54e75e1bcfa88dc7f719e55dc886bb0b648cb16636b1"
+      name: flutter_blue_classic
+      sha256: "2f40b4c01405c5f066428b8df86c4080fc2f63969bd3bf9ae21554bc61ed58a0"
       url: "https://pub.dev"
     source: hosted
-    version: "0.4.0"
+    version: "0.0.9"
   flutter_launcher_icons:
     dependency: "direct dev"
     description:
