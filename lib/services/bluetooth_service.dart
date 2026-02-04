@@ -20,10 +20,12 @@ class BluetoothService {
   final _connectionStateController =
       StreamController<BluetoothConnectionState>.broadcast();
   final _dataController = StreamController<String>.broadcast();
+  final _scanResultsController = StreamController<List<DeviceInfo>>.broadcast();
 
   Stream<BluetoothConnectionState> get connectionState =>
       _connectionStateController.stream;
   Stream<String> get dataStream => _dataController.stream;
+  Stream<List<DeviceInfo>> get scanResults => _scanResultsController.stream;
 
   BluetoothConnectionState _currentState = BluetoothConnectionState.disconnected;
   BluetoothConnectionState get currentState => _currentState;
@@ -32,6 +34,10 @@ class BluetoothService {
   DeviceInfo? get connectedDevice => _connectedDevice;
 
   StreamSubscription<BluetoothAdapterState>? _adapterStateSubscription;
+  StreamSubscription<BluetoothDevice>? _scanSubscription;
+  final List<DeviceInfo> _discoveredDevices = [];
+  bool _isScanning = false;
+  bool get isScanning => _isScanning;
 
   Future<bool> get isBluetoothEnabled async {
     return await _bluetooth.isEnabled;
@@ -49,6 +55,36 @@ class BluetoothService {
     if (devices == null) return [];
     return devices.map((d) => DeviceInfo.fromBlueClassicDevice(d)).toList();
   }
+
+  Future<void> startScan() async {
+    if (_isScanning) return;
+
+    _isScanning = true;
+    _discoveredDevices.clear();
+    _scanResultsController.add([]);
+
+    _scanSubscription = _bluetooth.scanResults.listen((device) {
+      final deviceInfo = DeviceInfo.fromBlueClassicDevice(device);
+      // Avoid duplicates
+      if (!_discoveredDevices.any((d) => d.address == deviceInfo.address)) {
+        _discoveredDevices.add(deviceInfo);
+        _scanResultsController.add(List.from(_discoveredDevices));
+      }
+    });
+
+    _bluetooth.startScan();
+  }
+
+  Future<void> stopScan() async {
+    if (!_isScanning) return;
+
+    _bluetooth.stopScan();
+    await _scanSubscription?.cancel();
+    _scanSubscription = null;
+    _isScanning = false;
+  }
+
+  List<DeviceInfo> get discoveredDevices => List.from(_discoveredDevices);
 
   Future<bool> connect(DeviceInfo device) async {
     if (_currentState == BluetoothConnectionState.connecting) {
@@ -122,8 +158,11 @@ class BluetoothService {
 
   void dispose() {
     _adapterStateSubscription?.cancel();
+    _scanSubscription?.cancel();
+    stopScan();
     disconnect();
     _connectionStateController.close();
     _dataController.close();
+    _scanResultsController.close();
   }
 }
