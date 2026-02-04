@@ -70,50 +70,13 @@ class _HomeScreenState extends State<HomeScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => Consumer<BluetoothProvider>(
-        builder: (context, bt, _) {
-          return AlertDialog(
-            title: const Text('Select Device'),
-            content: SizedBox(
-              width: double.maxFinite,
-              child: bt.pairedDevices.isEmpty
-                  ? const Padding(
-                      padding: EdgeInsets.all(16),
-                      child: Text(
-                        'No paired devices found.\n\n'
-                        'Please pair your HC-05 device in system Bluetooth settings first.',
-                        textAlign: TextAlign.center,
-                      ),
-                    )
-                  : ListView.builder(
-                      shrinkWrap: true,
-                      itemCount: bt.pairedDevices.length,
-                      itemBuilder: (context, index) {
-                        final device = bt.pairedDevices[index];
-                        return _DeviceListTile(
-                          device: device,
-                          isConnecting: bt.isConnecting,
-                          onTap: () => _connectToDevice(device),
-                        );
-                      },
-                    ),
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(context),
-                child: const Text('CANCEL'),
-              ),
-              TextButton(
-                onPressed: () async {
-                  await bt.loadPairedDevices();
-                },
-                child: const Text('REFRESH'),
-              ),
-            ],
-          );
-        },
+      builder: (context) => _DeviceSelectionDialog(
+        onDeviceSelected: _connectToDevice,
       ),
-    );
+    ).then((_) {
+      // Stop scanning when dialog is closed
+      btProvider.stopScan();
+    });
   }
 
   Future<void> _connectToDevice(DeviceInfo device) async {
@@ -404,6 +367,182 @@ class _DeviceListTile extends StatelessWidget {
             )
           : null,
       onTap: isConnecting ? null : onTap,
+    );
+  }
+}
+
+class _DeviceSelectionDialog extends StatefulWidget {
+  final Function(DeviceInfo) onDeviceSelected;
+
+  const _DeviceSelectionDialog({required this.onDeviceSelected});
+
+  @override
+  State<_DeviceSelectionDialog> createState() => _DeviceSelectionDialogState();
+}
+
+class _DeviceSelectionDialogState extends State<_DeviceSelectionDialog>
+    with SingleTickerProviderStateMixin {
+  late TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Consumer<BluetoothProvider>(
+      builder: (context, bt, _) {
+        return AlertDialog(
+          title: const Text('Select Device'),
+          contentPadding: const EdgeInsets.only(top: 16),
+          content: SizedBox(
+            width: double.maxFinite,
+            height: 350,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                TabBar(
+                  controller: _tabController,
+                  labelColor: AppColors.magenta,
+                  unselectedLabelColor: AppColors.lightBlue,
+                  indicatorColor: AppColors.magenta,
+                  tabs: [
+                    const Tab(text: 'Paired'),
+                    Tab(
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text('Scan'),
+                          if (bt.isScanning) ...[
+                            const SizedBox(width: 8),
+                            const SizedBox(
+                              width: 12,
+                              height: 12,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                valueColor: AlwaysStoppedAnimation<Color>(
+                                    AppColors.magenta),
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+                Expanded(
+                  child: TabBarView(
+                    controller: _tabController,
+                    children: [
+                      // Paired devices tab
+                      _buildPairedDevicesList(bt),
+                      // Scan devices tab
+                      _buildScanDevicesList(bt),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.pop(context),
+              child: const Text('CANCEL'),
+            ),
+            if (_tabController.index == 0)
+              TextButton(
+                onPressed: () => bt.loadPairedDevices(),
+                child: const Text('REFRESH'),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  Widget _buildPairedDevicesList(BluetoothProvider bt) {
+    if (bt.pairedDevices.isEmpty) {
+      return const Padding(
+        padding: EdgeInsets.all(16),
+        child: Text(
+          'No paired devices found.\n\n'
+          'Go to "Scan" tab to discover new devices,\n'
+          'or pair your HC-05 in system Bluetooth settings.',
+          textAlign: TextAlign.center,
+        ),
+      );
+    }
+
+    return ListView.builder(
+      shrinkWrap: true,
+      itemCount: bt.pairedDevices.length,
+      itemBuilder: (context, index) {
+        final device = bt.pairedDevices[index];
+        return _DeviceListTile(
+          device: device,
+          isConnecting: bt.isConnecting,
+          onTap: () => widget.onDeviceSelected(device),
+        );
+      },
+    );
+  }
+
+  Widget _buildScanDevicesList(BluetoothProvider bt) {
+    return Column(
+      children: [
+        Padding(
+          padding: const EdgeInsets.all(8.0),
+          child: ElevatedButton.icon(
+            onPressed: bt.isScanning ? bt.stopScan : bt.startScan,
+            icon: Icon(bt.isScanning ? Icons.stop : Icons.search),
+            label: Text(bt.isScanning ? 'Stop Scan' : 'Start Scan'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: bt.isScanning ? AppColors.error : AppColors.magenta,
+            ),
+          ),
+        ),
+        if (bt.isScanning && bt.discoveredDevices.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'Scanning for devices...\n\n'
+              'Make sure HC-05 is powered on\n'
+              '(LED should be blinking rapidly)',
+              textAlign: TextAlign.center,
+            ),
+          )
+        else if (!bt.isScanning && bt.discoveredDevices.isEmpty)
+          const Padding(
+            padding: EdgeInsets.all(16),
+            child: Text(
+              'Tap "Start Scan" to discover\nnearby Bluetooth devices.',
+              textAlign: TextAlign.center,
+            ),
+          )
+        else
+          Expanded(
+            child: ListView.builder(
+              shrinkWrap: true,
+              itemCount: bt.discoveredDevices.length,
+              itemBuilder: (context, index) {
+                final device = bt.discoveredDevices[index];
+                return _DeviceListTile(
+                  device: device,
+                  isConnecting: bt.isConnecting,
+                  onTap: () => widget.onDeviceSelected(device),
+                );
+              },
+            ),
+          ),
+      ],
     );
   }
 }
