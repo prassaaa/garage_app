@@ -12,12 +12,15 @@ class BluetoothProvider extends ChangeNotifier {
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
   List<DeviceInfo> _pairedDevices = [];
+  List<DeviceInfo> _discoveredDevices = [];
   DeviceInfo? _connectedDevice;
   int? _activeMode;
   int _speed = AppConstants.defaultSpeed;
   String? _lastResponse;
+  bool _isScanning = false;
   StreamSubscription<BluetoothConnectionState>? _stateSubscription;
   StreamSubscription<String>? _dataSubscription;
+  StreamSubscription<List<DeviceInfo>>? _scanSubscription;
 
   BluetoothProvider(this._bluetoothService) {
     _init();
@@ -25,10 +28,12 @@ class BluetoothProvider extends ChangeNotifier {
 
   BluetoothConnectionState get connectionState => _connectionState;
   List<DeviceInfo> get pairedDevices => _pairedDevices;
+  List<DeviceInfo> get discoveredDevices => _discoveredDevices;
   DeviceInfo? get connectedDevice => _connectedDevice;
   int? get activeMode => _activeMode;
   int get speed => _speed;
   String? get lastResponse => _lastResponse;
+  bool get isScanning => _isScanning;
   bool get isConnected =>
       _connectionState == BluetoothConnectionState.connected;
   bool get isConnecting =>
@@ -48,6 +53,11 @@ class BluetoothProvider extends ChangeNotifier {
       _lastResponse = data;
       notifyListeners();
     });
+
+    _scanSubscription = _bluetoothService.scanResults.listen((devices) {
+      _discoveredDevices = devices;
+      notifyListeners();
+    });
   }
 
   Future<bool> checkBluetoothEnabled() async {
@@ -60,6 +70,19 @@ class BluetoothProvider extends ChangeNotifier {
 
   Future<void> loadPairedDevices() async {
     _pairedDevices = await _bluetoothService.getPairedDevices();
+    notifyListeners();
+  }
+
+  Future<void> startScan() async {
+    _isScanning = true;
+    _discoveredDevices = [];
+    notifyListeners();
+    await _bluetoothService.startScan();
+  }
+
+  Future<void> stopScan() async {
+    await _bluetoothService.stopScan();
+    _isScanning = false;
     notifyListeners();
   }
 
@@ -145,6 +168,7 @@ class BluetoothProvider extends ChangeNotifier {
   void dispose() {
     _stateSubscription?.cancel();
     _dataSubscription?.cancel();
+    _scanSubscription?.cancel();
     _bluetoothService.dispose();
     super.dispose();
   }
