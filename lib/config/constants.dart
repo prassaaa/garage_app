@@ -2,9 +2,14 @@ class AppConstants {
   static const String appName = 'S758 Garage';
   static const String appVersion = '1.0.0';
 
-  // Bluetooth
-  static const String hc05Prefix = 'HC-05';
+  // Bluetooth (BLE)
+  static const String bleDeviceName = 'LM-ESP32';
   static const int bluetoothTimeout = 10000; // milliseconds
+
+  // Nordic UART Service (NUS) UUIDs
+  static const String nusServiceUuid = '6E400001-B5A3-F393-E0A9-E50E24DCCA9E';
+  static const String nusRxCharUuid = '6E400002-B5A3-F393-E0A9-E50E24DCCA9E'; // write
+  static const String nusTxCharUuid = '6E400003-B5A3-F393-E0A9-E50E24DCCA9E'; // notify
 
   // Speed limits (milliseconds)
   static const int minSpeed = 20;

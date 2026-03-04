@@ -11,7 +11,6 @@ class BluetoothProvider extends ChangeNotifier {
 
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
-  List<DeviceInfo> _pairedDevices = [];
   List<DeviceInfo> _discoveredDevices = [];
   DeviceInfo? _connectedDevice;
   int? _activeMode;
@@ -27,7 +26,6 @@ class BluetoothProvider extends ChangeNotifier {
   }
 
   BluetoothConnectionState get connectionState => _connectionState;
-  List<DeviceInfo> get pairedDevices => _pairedDevices;
   List<DeviceInfo> get discoveredDevices => _discoveredDevices;
   DeviceInfo? get connectedDevice => _connectedDevice;
   int? get activeMode => _activeMode;
@@ -66,11 +64,6 @@ class BluetoothProvider extends ChangeNotifier {
 
   Future<bool> requestEnableBluetooth() async {
     return await _bluetoothService.requestEnable();
-  }
-
-  Future<void> loadPairedDevices() async {
-    _pairedDevices = await _bluetoothService.getPairedDevices();
-    notifyListeners();
   }
 
   Future<void> startScan() async {

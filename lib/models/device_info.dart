@@ -1,28 +1,36 @@
-import 'package:flutter_blue_classic/flutter_blue_classic.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+
+import '../config/constants.dart';
 
 class DeviceInfo {
   final String name;
   final String address;
-  final bool isPaired;
+  final int? rssi;
+  final BluetoothDevice? bleDevice;
 
   const DeviceInfo({
     required this.name,
     required this.address,
-    this.isPaired = false,
+    this.rssi,
+    this.bleDevice,
   });
 
-  factory DeviceInfo.fromBlueClassicDevice(BluetoothDevice device) {
+  factory DeviceInfo.fromScanResult(ScanResult result) {
     return DeviceInfo(
-      name: device.name ?? 'Unknown Device',
-      address: device.address,
-      isPaired: device.bondState == BluetoothBondState.bonded,
+      name: result.device.platformName.isNotEmpty
+          ? result.device.platformName
+          : 'Unknown Device',
+      address: result.device.remoteId.str,
+      rssi: result.rssi,
+      bleDevice: result.device,
     );
   }
 
-  bool get isHC05 => name.toUpperCase().contains('HC-05') || name.toUpperCase().contains('HC05');
+  bool get isTargetDevice =>
+      name.toUpperCase().contains(AppConstants.bleDeviceName.toUpperCase());
 
   @override
-  String toString() => 'DeviceInfo(name: $name, address: $address, isPaired: $isPaired)';
+  String toString() => 'DeviceInfo(name: $name, address: $address, rssi: $rssi)';
 
   @override
   bool operator ==(Object other) {

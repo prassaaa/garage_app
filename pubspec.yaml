@@ -12,8 +12,8 @@ dependencies:
   # Firebase
   firebase_core: ^3.8.1
   firebase_auth: ^5.3.4
-  # Bluetooth
-  flutter_blue_classic: ^0.0.9
+  # Bluetooth (BLE)
+  flutter_blue_plus: ^1.35.2
   # State Management
   provider: ^6.1.2
   # UI
