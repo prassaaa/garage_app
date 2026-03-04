@@ -1,4 +1,4 @@
-import 'package:flutter_blue_plus/flutter_blue_plus.dart';
+import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
 
 import '../config/constants.dart';
 
@@ -6,7 +6,7 @@ class DeviceInfo {
   final String name;
   final String address;
   final int? rssi;
-  final BluetoothDevice? bleDevice;
+  final fbp.BluetoothDevice? bleDevice;
 
   const DeviceInfo({
     required this.name,
@@ -15,7 +15,7 @@ class DeviceInfo {
     this.bleDevice,
   });
 
-  factory DeviceInfo.fromScanResult(ScanResult result) {
+  factory DeviceInfo.fromScanResult(fbp.ScanResult result) {
     return DeviceInfo(
       name: result.device.platformName.isNotEmpty
           ? result.device.platformName

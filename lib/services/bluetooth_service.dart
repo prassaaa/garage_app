@@ -14,9 +14,9 @@ enum BluetoothConnectionState {
 }
 
 class BluetoothService {
-  BluetoothDevice? _bleDevice;
-  BluetoothCharacteristic? _rxChar; // write commands
-  BluetoothCharacteristic? _txChar; // receive notifications
+  fbp.BluetoothDevice? _bleDevice;
+  fbp.BluetoothCharacteristic? _rxChar; // write commands
+  fbp.BluetoothCharacteristic? _txChar; // receive notifications
 
   final _connectionStateController =
       StreamController<BluetoothConnectionState>.broadcast();
@@ -34,23 +34,23 @@ class BluetoothService {
   DeviceInfo? _connectedDevice;
   DeviceInfo? get connectedDevice => _connectedDevice;
 
-  StreamSubscription<List<ScanResult>>? _scanSubscription;
-  StreamSubscription<BluetoothConnectionState>? _deviceStateSubscription;
+  StreamSubscription<List<fbp.ScanResult>>? _scanSubscription;
+  StreamSubscription<fbp.BluetoothConnectionState>? _deviceStateSubscription;
   StreamSubscription<List<int>>? _notifySubscription;
   final List<DeviceInfo> _discoveredDevices = [];
   bool _isScanning = false;
   bool get isScanning => _isScanning;
 
   Future<bool> get isBluetoothEnabled async {
-    final state = await FlutterBluePlus.adapterState.first;
-    return state == BluetoothAdapterState.on;
+    final state = await fbp.FlutterBluePlus.adapterState.first;
+    return state == fbp.BluetoothAdapterState.on;
   }
 
   Future<bool> requestEnable() async {
-    await FlutterBluePlus.turnOn();
+    await fbp.FlutterBluePlus.turnOn();
     await Future.delayed(const Duration(seconds: 1));
-    final state = await FlutterBluePlus.adapterState.first;
-    return state == BluetoothAdapterState.on;
+    final state = await fbp.FlutterBluePlus.adapterState.first;
+    return state == fbp.BluetoothAdapterState.on;
   }
 
   Future<void> startScan() async {
@@ -60,7 +60,7 @@ class BluetoothService {
     _discoveredDevices.clear();
     _scanResultsController.add([]);
 
-    _scanSubscription = FlutterBluePlus.scanResults.listen((results) {
+    _scanSubscription = fbp.FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
         final deviceInfo = DeviceInfo.fromScanResult(result);
         final existingIndex =
@@ -74,8 +74,8 @@ class BluetoothService {
       _scanResultsController.add(List.from(_discoveredDevices));
     });
 
-    await FlutterBluePlus.startScan(
-      withServices: [Guid(AppConstants.nusServiceUuid)],
+    await fbp.FlutterBluePlus.startScan(
+      withServices: [fbp.Guid(AppConstants.nusServiceUuid)],
       timeout: const Duration(seconds: 10),
     );
 
@@ -85,7 +85,7 @@ class BluetoothService {
   Future<void> stopScan() async {
     if (!_isScanning) return;
 
-    await FlutterBluePlus.stopScan();
+    await fbp.FlutterBluePlus.stopScan();
     await _scanSubscription?.cancel();
     _scanSubscription = null;
     _isScanning = false;
@@ -115,7 +115,7 @@ class BluetoothService {
 
       // Listen for disconnection
       _deviceStateSubscription = _bleDevice!.connectionState.listen((state) {
-        if (state == BluetoothConnectionState.disconnected) {
+        if (state == fbp.BluetoothConnectionState.disconnected) {
           _onDisconnected();
         }
       });
@@ -123,17 +123,17 @@ class BluetoothService {
       // Discover services and find NUS characteristics
       final services = await _bleDevice!.discoverServices();
       final nusService = services.firstWhere(
-        (s) => s.uuid == Guid(AppConstants.nusServiceUuid),
+        (s) => s.uuid == fbp.Guid(AppConstants.nusServiceUuid),
         orElse: () => throw Exception('NUS service not found'),
       );
 
       _rxChar = nusService.characteristics.firstWhere(
-        (c) => c.uuid == Guid(AppConstants.nusRxCharUuid),
+        (c) => c.uuid == fbp.Guid(AppConstants.nusRxCharUuid),
         orElse: () => throw Exception('RX characteristic not found'),
       );
 
       _txChar = nusService.characteristics.firstWhere(
-        (c) => c.uuid == Guid(AppConstants.nusTxCharUuid),
+        (c) => c.uuid == fbp.Guid(AppConstants.nusTxCharUuid),
         orElse: () => throw Exception('TX characteristic not found'),
       );
 
