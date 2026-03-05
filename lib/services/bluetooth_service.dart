@@ -1,7 +1,10 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
 
+import 'package:flutter/foundation.dart';
 import 'package:flutter_blue_plus/flutter_blue_plus.dart' as fbp;
+import 'package:permission_handler/permission_handler.dart';
 
 import '../config/constants.dart';
 import '../models/device_info.dart';
@@ -41,13 +44,42 @@ class BluetoothService {
   bool _isScanning = false;
   bool get isScanning => _isScanning;
 
+  bool _disposed = false;
+
+  /// Request BLE-related permissions. Returns true if all granted.
+  Future<bool> requestPermissions() async {
+    if (!Platform.isAndroid) return true;
+
+    try {
+      final statuses = await [
+        Permission.bluetoothScan,
+        Permission.bluetoothConnect,
+        Permission.locationWhenInUse,
+      ].request();
+
+      final allGranted = statuses.values.every(
+        (s) => s.isGranted || s.isLimited,
+      );
+
+      if (!allGranted) {
+        debugPrint('BLE permissions not granted: $statuses');
+      }
+      return allGranted;
+    } catch (e) {
+      debugPrint('Permission request failed: $e');
+      return false;
+    }
+  }
+
   Future<bool> get isBluetoothEnabled async {
     final state = await fbp.FlutterBluePlus.adapterState.first;
     return state == fbp.BluetoothAdapterState.on;
   }
 
   Future<bool> requestEnable() async {
-    await fbp.FlutterBluePlus.turnOn();
+    if (Platform.isAndroid) {
+      await fbp.FlutterBluePlus.turnOn();
+    }
     await Future.delayed(const Duration(seconds: 1));
     final state = await fbp.FlutterBluePlus.adapterState.first;
     return state == fbp.BluetoothAdapterState.on;
@@ -58,7 +90,13 @@ class BluetoothService {
 
     _isScanning = true;
     _discoveredDevices.clear();
-    _scanResultsController.add([]);
+
+    await _scanSubscription?.cancel();
+    _scanSubscription = null;
+
+    if (!_disposed) {
+      _scanResultsController.add([]);
+    }
 
     _scanSubscription = fbp.FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
@@ -71,7 +109,9 @@ class BluetoothService {
           _discoveredDevices.add(deviceInfo);
         }
       }
-      _scanResultsController.add(List.from(_discoveredDevices));
+      if (!_disposed) {
+        _scanResultsController.add(List.from(_discoveredDevices));
+      }
     });
 
     await fbp.FlutterBluePlus.startScan(
@@ -141,7 +181,9 @@ class BluetoothService {
       await _txChar!.setNotifyValue(true);
       _notifySubscription = _txChar!.onValueReceived.listen((value) {
         final decoded = utf8.decode(value);
-        _dataController.add(decoded);
+        if (!_disposed) {
+          _dataController.add(decoded);
+        }
       });
 
       _connectedDevice = device;
@@ -155,13 +197,15 @@ class BluetoothService {
     }
   }
 
-  void _onDisconnected() {
+  Future<void> _onDisconnected() async {
     _connectedDevice = null;
-    _cleanup();
+    await _cleanup();
     _updateState(BluetoothConnectionState.disconnected);
   }
 
   Future<void> disconnect() async {
+    await _deviceStateSubscription?.cancel();
+    _deviceStateSubscription = null;
     try {
       await _bleDevice?.disconnect();
     } catch (_) {}
@@ -188,7 +232,7 @@ class BluetoothService {
     try {
       await _rxChar!.write(
         utf8.encode('$command\n'),
-        withoutResponse: true,
+        withoutResponse: false,
       );
       return true;
     } catch (e) {
@@ -197,14 +241,16 @@ class BluetoothService {
   }
 
   void _updateState(BluetoothConnectionState state) {
+    if (_disposed) return;
     _currentState = state;
     _connectionStateController.add(state);
   }
 
   void dispose() {
+    _disposed = true;
     _scanSubscription?.cancel();
-    stopScan();
-    disconnect();
+    _notifySubscription?.cancel();
+    _deviceStateSubscription?.cancel();
     _connectionStateController.close();
     _dataController.close();
     _scanResultsController.close();

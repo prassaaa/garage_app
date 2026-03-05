@@ -8,7 +8,11 @@ void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
   // Initialize Firebase
-  await Firebase.initializeApp();
+  try {
+    await Firebase.initializeApp();
+  } catch (e) {
+    debugPrint('Firebase init failed: $e');
+  }
 
   // Set preferred orientations (portrait only)
   await SystemChrome.setPreferredOrientations([

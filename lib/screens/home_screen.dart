@@ -221,6 +221,9 @@ class _HomeScreenState extends State<HomeScreen> {
                                 max: AppConstants.maxSpeed.toDouble(),
                                 divisions: 100,
                                 onChanged: bt.isConnected
+                                    ? (value) => bt.setSpeedLocal(value.round())
+                                    : null,
+                                onChangeEnd: bt.isConnected
                                     ? (value) => bt.sendSpeed(value.round())
                                     : null,
                               ),

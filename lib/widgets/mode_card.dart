@@ -56,7 +56,7 @@ class ModeCard extends StatelessWidget {
                     fontSize: 24,
                     fontWeight: FontWeight.bold,
                     color: isEnabled
-                        ? (isActive ? AppColors.white : AppColors.white)
+                        ? AppColors.white
                         : AppColors.lightBlue.withValues(alpha: 0.5),
                   ),
                 ),

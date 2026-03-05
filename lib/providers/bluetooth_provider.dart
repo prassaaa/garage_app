@@ -67,10 +67,21 @@ class BluetoothProvider extends ChangeNotifier {
   }
 
   Future<void> startScan() async {
+    try {
+      await _bluetoothService.requestPermissions();
+    } catch (e) {
+      debugPrint('Permission request error: $e');
+    }
+
     _isScanning = true;
     _discoveredDevices = [];
     notifyListeners();
-    await _bluetoothService.startScan();
+    try {
+      await _bluetoothService.startScan();
+    } finally {
+      _isScanning = false;
+      notifyListeners();
+    }
   }
 
   Future<void> stopScan() async {
@@ -111,6 +122,11 @@ class BluetoothProvider extends ChangeNotifier {
       notifyListeners();
     }
     return result;
+  }
+
+  void setSpeedLocal(int ms) {
+    _speed = ms;
+    notifyListeners();
   }
 
   Future<bool> sendSpeed(int ms) async {

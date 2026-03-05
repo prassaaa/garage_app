@@ -1,5 +1,13 @@
 import 'package:firebase_auth/firebase_auth.dart';
 
+class AuthException implements Exception {
+  final String message;
+  const AuthException(this.message);
+
+  @override
+  String toString() => message;
+}
+
 class AuthService {
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
@@ -15,7 +23,7 @@ class AuthService {
       );
       return credential.user;
     } on FirebaseAuthException catch (e) {
-      throw _mapFirebaseAuthException(e);
+      throw AuthException(_mapFirebaseAuthException(e));
     }
   }
 

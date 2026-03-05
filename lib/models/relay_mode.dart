@@ -11,13 +11,11 @@ class RelayMode {
 
   String get command => '$id';
 
-  static List<RelayMode> get allModes {
-    return List.generate(
-      24,
-      (index) => RelayMode(
-        id: index + 1,
-        name: 'Mode ${index + 1}',
-      ),
-    );
-  }
+  static final List<RelayMode> allModes = List.generate(
+    24,
+    (index) => RelayMode(
+      id: index + 1,
+      name: 'Mode ${index + 1}',
+    ),
+  );
 }

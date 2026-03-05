@@ -52,9 +52,12 @@ class _SplashScreenState extends State<SplashScreen>
 
     final authProvider = context.read<AuthProvider>();
 
-    // Wait for auth state to be determined
-    while (authProvider.state == AuthState.initial) {
+    // Wait for auth state to be determined, with timeout
+    const maxWaitMs = 5000;
+    var waitedMs = 0;
+    while (authProvider.state == AuthState.initial && waitedMs < maxWaitMs) {
       await Future.delayed(const Duration(milliseconds: 100));
+      waitedMs += 100;
       if (!mounted) return;
     }
 
