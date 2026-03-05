@@ -89,14 +89,9 @@ class BluetoothService {
     if (_isScanning) return;
 
     _isScanning = true;
-    _discoveredDevices.clear();
 
     await _scanSubscription?.cancel();
     _scanSubscription = null;
-
-    if (!_disposed) {
-      _scanResultsController.add([]);
-    }
 
     _scanSubscription = fbp.FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
@@ -148,9 +143,21 @@ class BluetoothService {
     try {
       _bleDevice = device.bleDevice;
 
+      // Ensure previous connection is fully released before reconnecting
+      if (_bleDevice!.isConnected) {
+        try {
+          await _txChar?.setNotifyValue(false);
+        } catch (_) {}
+        try {
+          await _bleDevice!.disconnect();
+        } catch (_) {}
+        await Future.delayed(const Duration(milliseconds: 600));
+      }
+
       // Connect to the BLE device
       await _bleDevice!.connect(
         timeout: const Duration(seconds: 10),
+        autoConnect: false,
       );
 
       // Listen for disconnection
@@ -198,18 +205,35 @@ class BluetoothService {
   }
 
   Future<void> _onDisconnected() async {
+    if (_currentState != BluetoothConnectionState.connected) return;
     _connectedDevice = null;
     await _cleanup();
     _updateState(BluetoothConnectionState.disconnected);
   }
 
   Future<void> disconnect() async {
+    // 1. Cancel connection state listener (prevent spurious events)
     await _deviceStateSubscription?.cancel();
     _deviceStateSubscription = null;
+
+    // 2. Disable notifications BEFORE disconnecting (clean CCCD on ESP32)
+    try {
+      await _txChar?.setNotifyValue(false);
+    } catch (_) {}
+
+    // 3. Cancel notification subscription
+    await _notifySubscription?.cancel();
+    _notifySubscription = null;
+
+    // 4. Disconnect BLE
     try {
       await _bleDevice?.disconnect();
     } catch (_) {}
-    await _cleanup();
+
+    // 5. Null out references
+    _rxChar = null;
+    _txChar = null;
+    _bleDevice = null;
     _connectedDevice = null;
     _updateState(BluetoothConnectionState.disconnected);
   }

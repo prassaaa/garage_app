@@ -74,7 +74,6 @@ class BluetoothProvider extends ChangeNotifier {
     }
 
     _isScanning = true;
-    _discoveredDevices = [];
     notifyListeners();
     try {
       await _bluetoothService.startScan();
