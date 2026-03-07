@@ -20,6 +20,7 @@ class GarageApp extends StatelessWidget {
         ),
         Provider<BluetoothService>(
           create: (_) => BluetoothService(),
+          dispose: (_, service) => service.dispose(),
         ),
         ChangeNotifierProvider<AuthProvider>(
           create: (context) => AuthProvider(context.read<AuthService>()),

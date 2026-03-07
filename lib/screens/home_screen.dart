@@ -67,9 +67,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
     showDialog(
       context: context,
-      builder: (context) => _DeviceSelectionDialog(
-        onDeviceSelected: _connectToDevice,
-      ),
+      builder: (context) =>
+          _DeviceSelectionDialog(onDeviceSelected: _connectToDevice),
     ).then((_) {
       // Stop scanning when dialog is closed
       btProvider.stopScan();
@@ -189,79 +188,33 @@ class _HomeScreenState extends State<HomeScreen> {
                 return Column(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    // Speed control
-                    Row(
-                      children: [
-                        const Icon(Icons.speed, color: AppColors.lightBlue),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Row(
-                                mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
-                                children: [
-                                  const Text(
-                                    'Speed',
-                                    style: TextStyle(color: AppColors.lightBlue),
-                                  ),
-                                  Text(
-                                    '${bt.speed} ms',
-                                    style: const TextStyle(
-                                      color: AppColors.magenta,
-                                      fontWeight: FontWeight.bold,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                              Slider(
-                                value: bt.speed.toDouble(),
-                                min: AppConstants.minSpeed.toDouble(),
-                                max: AppConstants.maxSpeed.toDouble(),
-                                divisions: 100,
-                                onChanged: bt.isConnected
-                                    ? (value) => bt.setSpeedLocal(value.round())
-                                    : null,
-                                onChangeEnd: bt.isConnected
-                                    ? (value) => bt.sendSpeed(value.round())
-                                    : null,
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-
-                    const SizedBox(height: 8),
-
                     // Speed presets
                     Row(
                       children: [
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed: bt.isConnected
-                                ? () => bt.sendSpeedPreset('LOW')
-                                : null,
-                            child: const Text('LOW'),
+                          child: _SpeedPresetButton(
+                            label: 'LOW',
+                            isActive: bt.speed == AppConstants.speedLow,
+                            isEnabled: bt.isConnected,
+                            onPressed: () => bt.sendSpeedPreset('LOW'),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed: bt.isConnected
-                                ? () => bt.sendSpeedPreset('MED')
-                                : null,
-                            child: const Text('MED'),
+                          child: _SpeedPresetButton(
+                            label: 'MED',
+                            isActive: bt.speed == AppConstants.speedMed,
+                            isEnabled: bt.isConnected,
+                            onPressed: () => bt.sendSpeedPreset('MED'),
                           ),
                         ),
                         const SizedBox(width: 8),
                         Expanded(
-                          child: OutlinedButton(
-                            onPressed: bt.isConnected
-                                ? () => bt.sendSpeedPreset('HIGH')
-                                : null,
-                            child: const Text('HIGH'),
+                          child: _SpeedPresetButton(
+                            label: 'HIGH',
+                            isActive: bt.speed == AppConstants.speedHigh,
+                            isEnabled: bt.isConnected,
+                            onPressed: () => bt.sendSpeedPreset('HIGH'),
                           ),
                         ),
                       ],
@@ -291,34 +244,39 @@ class _HomeScreenState extends State<HomeScreen> {
       ),
       floatingActionButton: Consumer<BluetoothProvider>(
         builder: (context, bt, _) {
-          final isConnected = bt.connectionState == BluetoothConnectionState.connected;
-          final isConnecting = bt.connectionState == BluetoothConnectionState.connecting;
+          final isConnected =
+              bt.connectionState == BluetoothConnectionState.connected;
+          final isConnecting =
+              bt.connectionState == BluetoothConnectionState.connecting;
 
           return FloatingActionButton.extended(
             onPressed: isConnecting
                 ? null
                 : isConnected
-                    ? () => bt.disconnect()
-                    : _showDeviceSelectionDialog,
+                ? () => bt.disconnect()
+                : _showDeviceSelectionDialog,
             icon: isConnecting
                 ? const SizedBox(
                     width: 20,
                     height: 20,
                     child: CircularProgressIndicator(
                       strokeWidth: 2,
-                      valueColor: AlwaysStoppedAnimation<Color>(AppColors.white),
+                      valueColor: AlwaysStoppedAnimation<Color>(
+                        AppColors.white,
+                      ),
                     ),
                   )
-                : Icon(isConnected ? Icons.bluetooth_disabled : Icons.bluetooth),
+                : Icon(
+                    isConnected ? Icons.bluetooth_disabled : Icons.bluetooth,
+                  ),
             label: Text(
               isConnecting
                   ? 'Connecting...'
                   : isConnected
-                      ? 'Disconnect'
-                      : 'Connect',
+                  ? 'Disconnect'
+                  : 'Connect',
             ),
-            backgroundColor:
-                isConnected ? AppColors.error : AppColors.magenta,
+            backgroundColor: isConnected ? AppColors.error : AppColors.magenta,
           );
         },
       ),
@@ -390,8 +348,9 @@ class _DeviceSelectionDialog extends StatelessWidget {
                   height: 16,
                   child: CircularProgressIndicator(
                     strokeWidth: 2,
-                    valueColor:
-                        AlwaysStoppedAnimation<Color>(AppColors.magenta),
+                    valueColor: AlwaysStoppedAnimation<Color>(
+                      AppColors.magenta,
+                    ),
                   ),
                 ),
             ],
@@ -423,12 +382,32 @@ class _DeviceSelectionDialog extends StatelessWidget {
             icon: Icon(bt.isScanning ? Icons.stop : Icons.search),
             label: Text(bt.isScanning ? 'Stop Scan' : 'Start Scan'),
             style: ElevatedButton.styleFrom(
-              backgroundColor:
-                  bt.isScanning ? AppColors.error : AppColors.magenta,
+              backgroundColor: bt.isScanning
+                  ? AppColors.error
+                  : AppColors.magenta,
             ),
           ),
         ),
-        if (bt.isScanning && bt.discoveredDevices.isEmpty)
+        if (bt.scanError != null)
+          Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              children: [
+                const Icon(
+                  Icons.location_off,
+                  color: AppColors.error,
+                  size: 32,
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  bt.scanError!,
+                  textAlign: TextAlign.center,
+                  style: const TextStyle(color: AppColors.error),
+                ),
+              ],
+            ),
+          )
+        else if (bt.isScanning && bt.discoveredDevices.isEmpty)
           const Padding(
             padding: EdgeInsets.all(16),
             child: Text(
@@ -461,6 +440,38 @@ class _DeviceSelectionDialog extends StatelessWidget {
             ),
           ),
       ],
+    );
+  }
+}
+
+class _SpeedPresetButton extends StatelessWidget {
+  final String label;
+  final bool isActive;
+  final bool isEnabled;
+  final VoidCallback onPressed;
+
+  const _SpeedPresetButton({
+    required this.label,
+    required this.isActive,
+    required this.isEnabled,
+    required this.onPressed,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    if (isActive) {
+      return ElevatedButton(
+        onPressed: isEnabled ? onPressed : null,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: AppColors.magenta,
+          foregroundColor: AppColors.white,
+        ),
+        child: Text(label),
+      );
+    }
+    return OutlinedButton(
+      onPressed: isEnabled ? onPressed : null,
+      child: Text(label),
     );
   }
 }

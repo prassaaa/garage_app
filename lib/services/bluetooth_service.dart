@@ -71,6 +71,13 @@ class BluetoothService {
     }
   }
 
+  /// Check if Location Services are enabled (required for BLE scan on Android < 12).
+  Future<bool> get isLocationServiceEnabled async {
+    if (!Platform.isAndroid) return true;
+    final status = await Permission.location.serviceStatus;
+    return status.isEnabled;
+  }
+
   Future<bool> get isBluetoothEnabled async {
     final state = await fbp.FlutterBluePlus.adapterState.first;
     return state == fbp.BluetoothAdapterState.on;
@@ -92,6 +99,8 @@ class BluetoothService {
 
     await _scanSubscription?.cancel();
     _scanSubscription = null;
+
+    _discoveredDevices.clear();
 
     _scanSubscription = fbp.FlutterBluePlus.scanResults.listen((results) {
       for (final result in results) {
@@ -161,6 +170,8 @@ class BluetoothService {
       );
 
       // Listen for disconnection
+      await _deviceStateSubscription?.cancel();
+      _deviceStateSubscription = null;
       _deviceStateSubscription = _bleDevice!.connectionState.listen((state) {
         if (state == fbp.BluetoothConnectionState.disconnected) {
           _onDisconnected();
@@ -205,7 +216,7 @@ class BluetoothService {
   }
 
   Future<void> _onDisconnected() async {
-    if (_currentState != BluetoothConnectionState.connected) return;
+    if (_currentState == BluetoothConnectionState.disconnected) return;
     _connectedDevice = null;
     await _cleanup();
     _updateState(BluetoothConnectionState.disconnected);
@@ -245,6 +256,9 @@ class BluetoothService {
     _deviceStateSubscription = null;
     _rxChar = null;
     _txChar = null;
+    try {
+      await _bleDevice?.disconnect();
+    } catch (_) {}
     _bleDevice = null;
   }
 
@@ -268,6 +282,16 @@ class BluetoothService {
     if (_disposed) return;
     _currentState = state;
     _connectionStateController.add(state);
+  }
+
+  /// Call before dispose() for proper async cleanup
+  Future<void> cleanupAsync() async {
+    _disposed = true;
+    await stopScan();
+    await _notifySubscription?.cancel();
+    _notifySubscription = null;
+    await _deviceStateSubscription?.cancel();
+    _deviceStateSubscription = null;
   }
 
   void dispose() {

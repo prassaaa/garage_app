@@ -11,10 +11,8 @@ class AppConstants {
   static const String nusRxCharUuid = '6E400002-B5A3-F393-E0A9-E50E24DCCA9E'; // write
   static const String nusTxCharUuid = '6E400003-B5A3-F393-E0A9-E50E24DCCA9E'; // notify
 
-  // Speed limits (milliseconds)
-  static const int minSpeed = 20;
-  static const int maxSpeed = 5000;
-  static const int defaultSpeed = 160;
+  // Speed
+  static const int defaultSpeed = 200; // same as speedLow
 
   // Preset speeds
   static const int speedLow = 200;

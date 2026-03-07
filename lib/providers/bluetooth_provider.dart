@@ -12,11 +12,11 @@ class BluetoothProvider extends ChangeNotifier {
   BluetoothConnectionState _connectionState =
       BluetoothConnectionState.disconnected;
   List<DeviceInfo> _discoveredDevices = [];
-  DeviceInfo? _connectedDevice;
   int? _activeMode;
   int _speed = AppConstants.defaultSpeed;
   String? _lastResponse;
   bool _isScanning = false;
+  String? _scanError;
   StreamSubscription<BluetoothConnectionState>? _stateSubscription;
   StreamSubscription<String>? _dataSubscription;
   StreamSubscription<List<DeviceInfo>>? _scanSubscription;
@@ -27,11 +27,12 @@ class BluetoothProvider extends ChangeNotifier {
 
   BluetoothConnectionState get connectionState => _connectionState;
   List<DeviceInfo> get discoveredDevices => _discoveredDevices;
-  DeviceInfo? get connectedDevice => _connectedDevice;
+  DeviceInfo? get connectedDevice => _bluetoothService.connectedDevice;
   int? get activeMode => _activeMode;
   int get speed => _speed;
   String? get lastResponse => _lastResponse;
   bool get isScanning => _isScanning;
+  String? get scanError => _scanError;
   bool get isConnected =>
       _connectionState == BluetoothConnectionState.connected;
   bool get isConnecting =>
@@ -41,7 +42,6 @@ class BluetoothProvider extends ChangeNotifier {
     _stateSubscription = _bluetoothService.connectionState.listen((state) {
       _connectionState = state;
       if (state == BluetoothConnectionState.disconnected) {
-        _connectedDevice = null;
         _activeMode = null;
       }
       notifyListeners();
@@ -67,16 +67,38 @@ class BluetoothProvider extends ChangeNotifier {
   }
 
   Future<void> startScan() async {
+    _scanError = null;
+
+    bool permGranted = true;
     try {
-      await _bluetoothService.requestPermissions();
+      permGranted = await _bluetoothService.requestPermissions();
     } catch (e) {
       debugPrint('Permission request error: $e');
+      permGranted = false;
+    }
+
+    if (!permGranted) {
+      _scanError = 'Bluetooth permissions are required to scan for devices.';
+      notifyListeners();
+      return;
+    }
+
+    // Check Location Services (required on Android < 12)
+    final locationEnabled = await _bluetoothService.isLocationServiceEnabled;
+    if (!locationEnabled) {
+      _scanError = 'Location Services must be enabled for Bluetooth scanning. '
+          'Please turn on Location/GPS in your device settings.';
+      notifyListeners();
+      return;
     }
 
     _isScanning = true;
     notifyListeners();
     try {
       await _bluetoothService.startScan();
+    } catch (e) {
+      debugPrint('Scan error: $e');
+      _scanError = 'Failed to start scan. Please check Bluetooth and Location settings.';
     } finally {
       _isScanning = false;
       notifyListeners();
@@ -91,15 +113,11 @@ class BluetoothProvider extends ChangeNotifier {
 
   Future<bool> connect(DeviceInfo device) async {
     final result = await _bluetoothService.connect(device);
-    if (result) {
-      _connectedDevice = device;
-    }
     return result;
   }
 
   Future<void> disconnect() async {
     await _bluetoothService.disconnect();
-    _connectedDevice = null;
     _activeMode = null;
     notifyListeners();
   }
@@ -118,21 +136,6 @@ class BluetoothProvider extends ChangeNotifier {
     final result = await _bluetoothService.sendCommand(BluetoothCommands.stop);
     if (result) {
       _activeMode = null;
-      notifyListeners();
-    }
-    return result;
-  }
-
-  void setSpeedLocal(int ms) {
-    _speed = ms;
-    notifyListeners();
-  }
-
-  Future<bool> sendSpeed(int ms) async {
-    final result =
-        await _bluetoothService.sendCommand(BluetoothCommands.speed(ms));
-    if (result) {
-      _speed = ms;
       notifyListeners();
     }
     return result;
@@ -168,8 +171,13 @@ class BluetoothProvider extends ChangeNotifier {
   }
 
   Future<bool> sendIdle([int? modeNumber]) async {
-    return await _bluetoothService
+    final result = await _bluetoothService
         .sendCommand(BluetoothCommands.idle(modeNumber));
+    if (result) {
+      _activeMode = null;
+      notifyListeners();
+    }
+    return result;
   }
 
   @override
@@ -177,7 +185,6 @@ class BluetoothProvider extends ChangeNotifier {
     _stateSubscription?.cancel();
     _dataSubscription?.cancel();
     _scanSubscription?.cancel();
-    _bluetoothService.dispose();
     super.dispose();
   }
 }
